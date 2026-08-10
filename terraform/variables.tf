@@ -4,10 +4,10 @@ variable "app_display_name" {
   default     = "Outlook MCP Server"
 }
 
-variable "redirect_uri" {
-  description = "OAuth redirect URI. Must match MS_AUTH_SERVER_URL/auth/callback used by the auth server."
+variable "public_client_redirect_uri" {
+  description = "Loopback redirect URI for the azure-identity interactive browser flow. Microsoft allows any localhost port when http://localhost is registered."
   type        = string
-  default     = "http://localhost:3333/auth/callback"
+  default     = "http://localhost"
 }
 
 variable "secret_expiration_days" {

@@ -4,10 +4,12 @@ Authentication-related tools for the Outlook MCP server
 
 __all__ = ["handle_about", "handle_authenticate", "handle_check_auth_status"]
 
+import asyncio
 import logging
+
 from config import settings
-from .token_manager import load_token_cache, is_token_expired, get_valid_token
 from server import mcp
+from .graph_auth import authenticate_interactive, has_valid_session
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ logger = logging.getLogger(__name__)
 async def handle_about() -> str:
     """
     About tool handler - provides information about the Outlook MCP server
-    
+
     Returns:
         String containing server information including name, version, capabilities,
         and available features for managing Outlook emails and calendar events
@@ -31,52 +33,40 @@ async def handle_about() -> str:
 @mcp.tool()
 async def handle_authenticate(force: bool = False) -> str:
     """
-    Authentication tool handler - manages Microsoft Graph API authentication for Outlook access
-    
-    Args:
-        force: Whether to force re-authentication even if valid tokens exist (default: False)
-        
-    Returns:
-        Authentication status message indicating success, failure, or instructions for
-        completing the OAuth flow to access Outlook services
-    """
-    auth_url = f"{settings.MS_AUTH_SERVER_URL}/auth"
+    Authentication tool handler - signs in to Microsoft Graph via the interactive
+    browser flow. Opens a browser window for the user to sign in; the resulting
+    tokens are cached (encrypted) so subsequent sessions refresh silently.
 
-    return (
-        f"Authentication required. Please visit the following URL to authenticate with Microsoft: {auth_url}\n\n"
-        f"After authentication, you will be redirected back to this application."
-    )
+    Args:
+        force: Re-run interactive sign-in even if a valid session already exists.
+
+    Returns:
+        A message indicating the signed-in account, or the failure reason.
+    """
+    if not force and await asyncio.to_thread(has_valid_session):
+        return "Already authenticated and ready."
+
+    try:
+        record = await asyncio.to_thread(authenticate_interactive)
+        return f"Authentication successful. Signed in as {record.username}."
+    except Exception as e:
+        logger.error(f"Interactive authentication failed: {str(e)}")
+        return (
+            "Authentication failed: "
+            f"{str(e)}\n\nPlease try running the 'authenticate' tool again."
+        )
 
 
 @mcp.tool()
 async def handle_check_auth_status() -> str:
     """
-    Check authentication status tool handler - verifies current Microsoft Graph API authentication state
-    
+    Check authentication status tool handler - reports whether a valid Microsoft
+    Graph session exists (attempting a silent token acquisition).
+
     Returns:
-        String containing current authentication status, token validity, expiration details,
-        and whether the user is properly authenticated to access Outlook services
+        A message describing the current authentication state.
     """
-    logger.info("Starting authentication status check")
-
-    tokens = load_token_cache()
-
-    logger.info(f"Tokens loaded: {'YES' if tokens else 'NO'}")
-
-    if not tokens or not tokens.get("access_token"):
-        logger.info("No valid access token found")
-        return "Not authenticated. Please use the 'authenticate' tool to sign in."
-
-    # If the access token is still valid, we're good.
-    if not is_token_expired(tokens):
+    if await asyncio.to_thread(has_valid_session):
         return "Authenticated and ready."
 
-    # Otherwise try a silent refresh using the stored refresh token.
-    logger.info("Access token expired; attempting silent refresh")
-    if get_valid_token():
-        return "Authenticated and ready (access token was refreshed)."
-
-    return (
-        "Session expired and could not be refreshed automatically. "
-        "Please use the 'authenticate' tool to sign in again."
-    )
+    return "Not authenticated. Please use the 'authenticate' tool to sign in."

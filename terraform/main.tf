@@ -48,9 +48,15 @@ resource "azuread_application" "outlook_mcp" {
     requested_access_token_version = 2
   }
 
-  web {
-    redirect_uris = [var.redirect_uri]
+  # The MCP server signs in with the azure-identity interactive browser flow,
+  # which is a public-client (PKCE) flow using a loopback redirect. No client
+  # secret is required for it.
+  public_client {
+    redirect_uris = [var.public_client_redirect_uri]
   }
+
+  # Allow the app to act as a public client for the interactive/loopback flow.
+  fallback_public_client_enabled = true
 
   required_resource_access {
     resource_app_id = data.azuread_service_principal.msgraph.client_id

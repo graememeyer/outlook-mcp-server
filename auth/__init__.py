@@ -2,9 +2,11 @@
 Main authentication module for the Outlook MCP server
 """
 
+import asyncio
 import logging
 from typing import Optional
-from .token_manager import get_valid_token
+
+from .graph_auth import get_access_token
 from .tools import *
 from .tools import __all__ as tools_all
 
@@ -14,17 +16,16 @@ logger = logging.getLogger(__name__)
 async def ensure_authenticated() -> Optional[str]:
     """
     Ensure the user is authenticated and return a valid access token.
-    Returns None if not authenticated.
+    Returns None if interactive sign-in is required.
     """
-    token = get_valid_token()
+    token = await asyncio.to_thread(get_access_token)
 
     if not token:
-        logger.info("No valid token found, authentication required")
+        logger.info("No valid token found, interactive authentication required")
         return None
 
-    logger.info("Valid token found")
     return token
 
 
-# Export the token manager and auth tools
+# Export the auth helper and tools
 __all__ = ["ensure_authenticated"] + tools_all
