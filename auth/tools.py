@@ -4,10 +4,9 @@ Authentication-related tools for the Outlook MCP server
 
 __all__ = ["handle_about", "handle_authenticate", "handle_check_auth_status"]
 
-import time
 import logging
 from config import settings
-from .token_manager import load_token_cache
+from .token_manager import load_token_cache, is_token_expired, get_valid_token
 from server import mcp
 
 logger = logging.getLogger(__name__)
@@ -66,10 +65,18 @@ async def handle_check_auth_status() -> str:
 
     if not tokens or not tokens.get("access_token"):
         logger.info("No valid access token found")
-        return "Not authenticated"
+        return "Not authenticated. Please use the 'authenticate' tool to sign in."
 
-    logger.info("Access token present")
-    logger.info(f"Token expires at: {tokens.get('expires_at')}")
-    logger.info(f"Current time: {int(time.time() * 1000)}")
+    # If the access token is still valid, we're good.
+    if not is_token_expired(tokens):
+        return "Authenticated and ready."
 
-    return "Authenticated and ready"
+    # Otherwise try a silent refresh using the stored refresh token.
+    logger.info("Access token expired; attempting silent refresh")
+    if get_valid_token():
+        return "Authenticated and ready (access token was refreshed)."
+
+    return (
+        "Session expired and could not be refreshed automatically. "
+        "Please use the 'authenticate' tool to sign in again."
+    )
