@@ -117,20 +117,23 @@ async def progressive_search(
                 )
                 search_attempts.append(f"single-term-{term}")
 
-                # For single term search, only use $search with that term
+                # For single term search, only use $search with that term.
+                # NOTE: Microsoft Graph does not allow $search to be combined
+                # with $orderby, so we deliberately omit $orderby here.
                 simplified_params = {
                     "$top": count,
                     "$select": EMAIL_SELECT_FIELDS,
-                    "$orderby": "receivedDateTime desc",
                 }
 
-                # Add the search term in the appropriate KQL syntax
+                # Add the search term in the appropriate KQL syntax.
+                # The whole expression must be double-quoted, including the
+                # "field:value" form, otherwise Graph rejects the colon.
                 if term == "query":
-                    # General query doesn't need a prefix
+                    # General query doesn't need a field prefix
                     simplified_params["$search"] = f'"{search_terms[term]}"'
                 else:
-                    # Specific field searches use field:value syntax
-                    simplified_params["$search"] = f'{term}:"{search_terms[term]}"'
+                    # Specific field searches use "field:value" syntax
+                    simplified_params["$search"] = f'"{term}:{search_terms[term]}"'
 
                 # Add boolean filters if applicable
                 add_boolean_filters(simplified_params, filter_terms)
@@ -214,28 +217,34 @@ def build_search_params(
     params = {
         "$top": count,
         "$select": EMAIL_SELECT_FIELDS,
-        "$orderby": "receivedDateTime desc",
     }
 
     # Handle search terms
     kql_terms = []
 
+    # NOTE: For KQL field-scoped search, the *entire* "field:value" expression
+    # must be wrapped in double quotes (e.g. "from:foo@bar.com"). Wrapping only
+    # the value (from:"foo@bar.com") makes Graph reject the ':' as a syntax error.
     if search_terms["query"]:
-        # General query doesn't need a prefix
-        kql_terms.append(search_terms["query"])
+        # General query doesn't need a field prefix
+        kql_terms.append(f'"{search_terms["query"]}"')
 
     if search_terms["subject"]:
-        kql_terms.append(f'subject:"{search_terms["subject"]}"')
+        kql_terms.append(f'"subject:{search_terms["subject"]}"')
 
     if search_terms["from"]:
-        kql_terms.append(f'from:"{search_terms["from"]}"')
+        kql_terms.append(f'"from:{search_terms["from"]}"')
 
     if search_terms["to"]:
-        kql_terms.append(f'to:"{search_terms["to"]}"')
+        kql_terms.append(f'"to:{search_terms["to"]}"')
 
-    # Add $search if we have any search terms
+    # Add $search if we have any search terms.
+    # NOTE: Microsoft Graph does not allow $search to be combined with
+    # $orderby, so only fall back to $orderby when there is no $search.
     if kql_terms:
         params["$search"] = " ".join(kql_terms)
+    else:
+        params["$orderby"] = "receivedDateTime desc"
 
     # Add boolean filters
     add_boolean_filters(params, filter_terms)
