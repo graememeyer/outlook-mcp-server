@@ -1,6 +1,6 @@
 python-dotenv
 pydantic
 pydantic-settings
-aiohttp
 fastmcp>=3.4,<4
 azure-identity>=1.25,<2
+msgraph-sdk>=1.61,<2

@@ -113,7 +113,7 @@ For Claude Code / desktop, register the server in your MCP config (see
 ## Dependencies
 
 - fastmcp (>=3.4,<4)
+- msgraph-sdk
 - azure-identity
-- aiohttp
 - pydantic / pydantic-settings
 - python-dotenv

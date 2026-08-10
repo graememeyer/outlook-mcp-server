@@ -94,3 +94,34 @@ def get_access_token() -> Optional[str]:
 def has_valid_session() -> bool:
     """True if a token can be obtained silently (i.e. the user is signed in)."""
     return get_access_token() is not None
+
+
+_graph_client = None
+
+
+def get_graph_client():
+    """Return a shared msgraph GraphServiceClient backed by the shared credential.
+
+    CAE (Continuous Access Evaluation) is disabled on the auth provider so that
+    token acquisition uses the same (non-CAE) persistent cache partition that the
+    interactive sign-in populated. Without this, the SDK would request CAE tokens
+    from a separate, empty cache partition and fail silent refresh across
+    processes/restarts.
+    """
+    global _graph_client
+    if _graph_client is None:
+        from kiota_authentication_azure.azure_identity_authentication_provider import (
+            AzureIdentityAuthenticationProvider,
+        )
+        from msgraph import GraphRequestAdapter, GraphServiceClient
+
+        auth_provider = AzureIdentityAuthenticationProvider(
+            credentials=get_credential(),
+            scopes=[GRAPH_SCOPE],
+            allowed_hosts=["graph.microsoft.com"],
+            is_cae_enabled=False,
+        )
+        _graph_client = GraphServiceClient(
+            request_adapter=GraphRequestAdapter(auth_provider)
+        )
+    return _graph_client

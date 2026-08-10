@@ -1,16 +1,39 @@
 """
-Send email functionality
+Send email functionality (msgraph-sdk)
 """
 
-from utils.graph_api import call_graph_api
-from auth import ensure_authenticated
+import asyncio
+
+from msgraph.generated.models.body_type import BodyType
+from msgraph.generated.models.email_address import EmailAddress
+from msgraph.generated.models.importance import Importance
+from msgraph.generated.models.item_body import ItemBody
+from msgraph.generated.models.message import Message
+from msgraph.generated.models.recipient import Recipient
+from msgraph.generated.users.item.send_mail.send_mail_post_request_body import (
+    SendMailPostRequestBody,
+)
+
+from auth.graph_auth import get_graph_client, has_valid_session
 from server import mcp
+
+_IMPORTANCE = {"low": Importance.Low, "normal": Importance.Normal, "high": Importance.High}
+
+
+def _recipients(addresses: str):
+    """Turn a comma-separated address string into a list of Recipient objects."""
+    return [
+        Recipient(email_address=EmailAddress(address=a.strip()))
+        for a in (addresses or "").split(",")
+        if a.strip()
+    ]
 
 
 @mcp.tool()
 async def handle_send_email(
     to: str = "",
     cc: str = "",
+    bcc: str = "",
     subject: str = "",
     body: str = "",
     importance: str = "normal",
@@ -22,81 +45,58 @@ async def handle_send_email(
     Args:
         to: Primary recipient email addresses (comma-separated for multiple recipients)
         cc: Carbon copy recipient email addresses (comma-separated for multiple recipients)
+        bcc: Blind carbon copy recipient email addresses (comma-separated for multiple recipients)
         subject: Email subject line
-        body: Email body content (supports HTML formatting)
+        body: Email body content (HTML is detected automatically)
         importance: Email importance level ("low", "normal", or "high") (default: "normal")
         save_to_sent_items: Whether to save the email to Sent Items folder (default: True)
 
     Returns:
         Success message with sent email details or error message if sending failed
     """
-
-    # Validate required parameters
     if not to:
         return "Recipient (to) is required."
-
     if not subject:
         return "Subject is required."
-
     if not body:
         return "Body content is required."
 
+    if not await asyncio.to_thread(has_valid_session):
+        return "Authentication required. Please use the 'authenticate' tool first."
+
     try:
-        # Get access token
-        access_token = await ensure_authenticated()
-        if not access_token:
-            return "Authentication required. Please use the 'authenticate' tool first."
+        client = get_graph_client()
 
-        # Format recipients
-        to_recipients = [
-            {"emailAddress": {"address": email.strip()}} for email in to.split(",")
-        ]
+        to_recipients = _recipients(to)
+        cc_recipients = _recipients(cc)
+        bcc_recipients = _recipients(bcc)
 
-        cc_recipients = [
-            {"emailAddress": {"address": email.strip()}}
-            for email in (cc or "").split(",")
-            if email.strip()
-        ]
+        message = Message(
+            subject=subject,
+            body=ItemBody(
+                content_type=BodyType.Html if "<html" in body.lower() else BodyType.Text,
+                content=body,
+            ),
+            to_recipients=to_recipients,
+            cc_recipients=cc_recipients or None,
+            bcc_recipients=bcc_recipients or None,
+            importance=_IMPORTANCE.get(importance.lower(), Importance.Normal),
+        )
 
-        bcc_recipients = [
-            {"emailAddress": {"address": email.strip()}}
-            for email in (bcc or "").split(",")
-            if email.strip()
-        ]
+        request_body = SendMailPostRequestBody(
+            message=message, save_to_sent_items=save_to_sent_items
+        )
+        await client.me.send_mail.post(request_body)
 
-        # Prepare email object
-        email_object = {
-            "message": {
-                "subject": subject,
-                "body": {
-                    "contentType": "html" if "<html" in body else "text",
-                    "content": body,
-                },
-                "toRecipients": to_recipients,
-                "importance": importance,
-            },
-            "saveToSentItems": save_to_sent_items,
-        }
-
-        # Add optional recipients
-        if cc_recipients:
-            email_object["message"]["ccRecipients"] = cc_recipients
-        if bcc_recipients:
-            email_object["message"]["bccRecipients"] = bcc_recipients
-
-        # Make API call to send email
-        await call_graph_api(access_token, "POST", "me/sendMail", email_object)
-
+        extra = (f" + {len(cc_recipients)} CC" if cc_recipients else "") + (
+            f" + {len(bcc_recipients)} BCC" if bcc_recipients else ""
+        )
         return (
-            f"Email sent successfully!\n\n"
+            "Email sent successfully!\n\n"
             f"Subject: {subject}\n"
-            f"Recipients: {len(to_recipients)}"
-            f"{f' + {len(cc_recipients)} CC' if cc_recipients else ''}"
-            f"{f' + {len(bcc_recipients)} BCC' if bcc_recipients else ''}\n"
+            f"Recipients: {len(to_recipients)}{extra}\n"
             f"Message Length: {len(body)} characters"
         )
-    except Exception as e:
-        if str(e) == "Authentication required":
-            return "Authentication required. Please use the 'authenticate' tool first."
 
+    except Exception as e:
         return f"Error sending email: {str(e)}"
