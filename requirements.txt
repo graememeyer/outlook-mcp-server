@@ -5,4 +5,4 @@ pydantic
 pydantic-settings
 requests
 aiohttp
-mcp<2
+fastmcp>=3.4,<4

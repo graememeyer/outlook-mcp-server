@@ -1,5 +1,5 @@
 __all__ = ["mcp"]
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 mcp = FastMCP("outlook-assistant")
