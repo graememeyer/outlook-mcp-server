@@ -5,4 +5,4 @@ pydantic
 pydantic-settings
 requests
 aiohttp
-mcp
+mcp<2
