@@ -16,7 +16,7 @@ from logger import logger
 from server import mcp
 
 
-@mcp.tool()
+@mcp.tool(name="read_email", title="Read email")
 async def handle_read_email(id: str) -> str:
     """
     Read a specific email by its ID and return detailed content

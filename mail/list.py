@@ -16,7 +16,7 @@ from .formatting import format_summary
 from server import mcp
 
 
-@mcp.tool()
+@mcp.tool(name="list_emails", title="List emails")
 async def handle_list_emails(
     folder: str = "inbox",
     count: int = 10,

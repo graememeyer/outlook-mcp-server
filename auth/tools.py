@@ -14,7 +14,7 @@ from .graph_auth import authenticate_interactive, has_valid_session
 logger = logging.getLogger(__name__)
 
 
-@mcp.tool()
+@mcp.tool(name="about", title="About this server")
 async def handle_about() -> str:
     """
     About tool handler - provides information about the Outlook MCP server
@@ -30,7 +30,7 @@ async def handle_about() -> str:
     )
 
 
-@mcp.tool()
+@mcp.tool(name="authenticate", title="Authenticate with Microsoft")
 async def handle_authenticate(force: bool = False) -> str:
     """
     Authentication tool handler - signs in to Microsoft Graph via the interactive
@@ -57,7 +57,7 @@ async def handle_authenticate(force: bool = False) -> str:
         )
 
 
-@mcp.tool()
+@mcp.tool(name="check_auth_status", title="Check authentication status")
 async def handle_check_auth_status() -> str:
     """
     Check authentication status tool handler - reports whether a valid Microsoft

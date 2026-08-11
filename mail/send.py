@@ -29,7 +29,7 @@ def _recipients(addresses: str):
     ]
 
 
-@mcp.tool()
+@mcp.tool(name="send_email", title="Send email")
 async def handle_send_email(
     to: str = "",
     cc: str = "",

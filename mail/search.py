@@ -34,7 +34,7 @@ def build_search_query(query: str, from_addr: str, to: str, subject: str) -> str
     return " ".join(terms)
 
 
-@mcp.tool()
+@mcp.tool(name="search_emails", title="Search emails")
 async def handle_search_emails(
     folder: str = "inbox",
     count: int = 10,
