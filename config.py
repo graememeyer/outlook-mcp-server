@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     # cache itself is managed separately by msal-extensions (encrypted at rest).
     MS_AUTH_RECORD_PATH: str = str(Path.home() / ".outlook-mcp-auth-record.json")
 
+    # Transport. "stdio" (default) for local use with Claude Code/desktop;
+    # "http" (streamable HTTP) for a hosted/remote deployment behind a proxy.
+    MCP_TRANSPORT: str = "stdio"
+    MCP_HOST: str = "127.0.0.1"
+    MCP_PORT: int = 8000
+    MCP_PATH: str = "/mcp"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
