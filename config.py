@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     # cache itself is managed separately by msal-extensions (encrypted at rest).
     MS_AUTH_RECORD_PATH: str = str(Path.home() / ".outlook-mcp-auth-record.json")
 
+    # Allow the persistent token cache to fall back to unencrypted storage when
+    # no OS secret store is available (e.g. a headless Linux container). Keep
+    # False on desktops (DPAPI/Keychain/libsecret are used); set True in the
+    # container deployment, where the cache lives on a protected volume.
+    MS_ALLOW_UNENCRYPTED_TOKEN_CACHE: bool = False
+
     # Transport. "stdio" (default) for local use with Claude Code/desktop;
     # "http" (streamable HTTP) for a hosted/remote deployment behind a proxy.
     MCP_TRANSPORT: str = "stdio"

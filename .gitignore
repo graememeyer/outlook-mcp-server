@@ -188,3 +188,6 @@ claude-config.json
 
 # Claude Code project MCP config (contains secrets)
 .mcp.json
+
+# Local, uncommitted deployment handoff notes
+HANDOFF.md

@@ -27,9 +27,20 @@ from logger import logger
 GRAPH_SCOPE = "https://graph.microsoft.com/.default"
 
 # Name of the persisted MSAL token cache (managed by msal-extensions).
-_CACHE_NAME = "outlook-mcp"
+CACHE_NAME = "outlook-mcp"
 
 _credential: Optional[InteractiveBrowserCredential] = None
+
+
+def cache_options() -> TokenCachePersistenceOptions:
+    """Persistent-cache options shared by the server and the seed script.
+
+    They must match exactly so both read/write the same cache partition.
+    """
+    return TokenCachePersistenceOptions(
+        name=CACHE_NAME,
+        allow_unencrypted_storage=settings.MS_ALLOW_UNENCRYPTED_TOKEN_CACHE,
+    )
 
 
 def _load_auth_record() -> Optional[AuthenticationRecord]:
@@ -65,7 +76,7 @@ def get_credential() -> InteractiveBrowserCredential:
         _credential = InteractiveBrowserCredential(
             client_id=settings.MS_CLIENT_ID,
             tenant_id=settings.MS_TENANT_ID,
-            cache_persistence_options=TokenCachePersistenceOptions(name=_CACHE_NAME),
+            cache_persistence_options=cache_options(),
             authentication_record=_load_auth_record(),
             disable_automatic_authentication=True,
         )
