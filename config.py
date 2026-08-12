@@ -81,9 +81,26 @@ CALENDAR_SELECT_FIELDS = (
 )
 
 # Email constants
-EMAIL_SELECT_FIELDS = "id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,importance,isRead"
-EMAIL_DETAIL_FIELDS = "id,subject,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,bodyPreview,body,hasAttachments,importance,isRead,internetMessageHeaders"
+EMAIL_SELECT_FIELDS = "id,subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,hasAttachments,importance,isRead"
+EMAIL_DETAIL_FIELDS = "id,subject,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,sentDateTime,bodyPreview,body,hasAttachments,importance,isRead,internetMessageHeaders"
+# Address-only projection used by the correspondent aggregator. Dropping
+# bodyPreview/subject keeps a multi-thousand-message sweep cheap on the wire.
+EMAIL_MINIMAL_FIELDS = "from,toRecipients,ccRecipients,receivedDateTime,sentDateTime"
 
 # Pagination
 DEFAULT_PAGE_SIZE = 25
-MAX_RESULT_COUNT = 50
+
+# Per-request $top ceilings. Graph allows $top up to 1000 on messages when
+# filtering/ordering, but $search is far more fragile above a few hundred, so
+# the two paths get different page sizes.
+GRAPH_MAX_TOP = 1000
+LIST_PAGE_SIZE = 500
+SEARCH_PAGE_SIZE = 100
+
+# Maximum messages a single list/search call will return, across all pages.
+MAX_RESULT_COUNT = 1000
+
+# Safety rails for the correspondent aggregator, which is expected to sweep a
+# whole mailbox rather than return individual messages.
+MAX_SCAN_MESSAGES = 25000
+MAX_PAGES = 200
